@@ -1,5 +1,6 @@
 import type { IpoIssue, NewsItem } from '@bloomstock/core';
 import { nseJson } from './nse-client';
+import { mapNseIpoRows, type NseIpoRow } from './nse-ipo';
 
 interface Announcement {
   symbol?: string;
@@ -31,45 +32,17 @@ export class NseNewsProvider {
   }
 }
 
-interface NseIpoRow {
-  symbol?: string;
-  companyName?: string;
-  issueStartDate?: string;
-  issueEndDate?: string;
-  priceBand?: string;
-  lotSize?: string;
-  status?: string;
-}
-
 export class NseIpoProvider {
   async current(): Promise<IpoIssue[]> {
-    const rows = await nseJson<NseIpoRow[] | { data?: NseIpoRow[] }>('/api/ipo-current-issue');
-    const list = Array.isArray(rows) ? rows : (rows.data ?? []);
-    return list.map((row, index) => ({
-      id: row.symbol ?? `ipo-${index}`,
-      name: row.companyName ?? row.symbol ?? 'Unnamed IPO',
-      symbol: row.symbol ?? `IPO${index}`,
-      openDate: row.issueStartDate ? new Date(row.issueStartDate) : new Date(),
-      closeDate: row.issueEndDate ? new Date(row.issueEndDate) : new Date(),
-      priceBandLow: parseBand(row.priceBand, 0),
-      priceBandHigh: parseBand(row.priceBand, 1),
-      lotSize: row.lotSize ? Number(row.lotSize) : null,
-      status: mapIpoStatus(row.status),
-    }));
+    const payloads = await Promise.allSettled([
+      nseJson<NseIpoRow[] | { data?: NseIpoRow[] }>('/api/ipo-current-issue'),
+      nseJson<NseIpoRow[] | { data?: NseIpoRow[] }>('/api/ipo-forthcoming-issue'),
+    ]);
+    const rows = payloads.flatMap((result) => {
+      if (result.status !== 'fulfilled') return [];
+      const body = result.value;
+      return Array.isArray(body) ? body : (body.data ?? []);
+    });
+    return mapNseIpoRows(rows);
   }
-}
-
-function parseBand(band: string | undefined, index: number): number | null {
-  if (!band) return null;
-  const parts = band.replace(/[^0-9.]/g, ' ').trim().split(/\s+/);
-  const value = parts[index] ?? parts[0];
-  return value ? Number(value) : null;
-}
-
-function mapIpoStatus(status?: string): IpoIssue['status'] {
-  const value = (status ?? '').toLowerCase();
-  if (value.includes('open')) return 'open';
-  if (value.includes('list')) return 'listed';
-  if (value.includes('close')) return 'closed';
-  return 'upcoming';
 }

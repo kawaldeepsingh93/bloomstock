@@ -275,7 +275,7 @@ export class MarketRepository {
     const { error } = await this.db.from('ipo_issues').upsert(
       issues.map((ipo) => ({
         name: ipo.name,
-        symbol: ipo.symbol,
+        symbol: ipo.symbol ?? ipo.name.slice(0, 24),
         open_date: ipo.openDate.toISOString().slice(0, 10),
         close_date: ipo.closeDate.toISOString().slice(0, 10),
         price_band_low: ipo.priceBandLow,

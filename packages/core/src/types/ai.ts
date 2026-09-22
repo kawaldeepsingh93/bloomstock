@@ -72,6 +72,9 @@ export interface TodaysTradeResponse {
   recommendations: AiRecommendation[];
   noTrade: boolean;
   message: string;
+  sessionDate?: string;
+  marketOpen?: boolean;
+  tapeAsOf?: string | null;
 }
 
 export interface PortfolioReviewResponse {

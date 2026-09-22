@@ -39,14 +39,36 @@ export class ScanRepository {
       .maybeSingle();
     if (error) throw asError(error);
     if (!data) return null;
-    return {
-      scanDate: data.scan_date,
-      regime: data.market_regime,
-      stocksScanned: data.stocks_scanned,
-      noTradeReason: data.no_trade_reason,
-      candidates: (data.scan_results ?? []).map(mapResult),
-    };
+    return mapScan(data);
   }
+
+  async getLatest(): Promise<DailyScanSummary | null> {
+    const { data, error } = await this.db
+      .from('daily_scans')
+      .select('*, scan_results(*)')
+      .order('scan_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw asError(error);
+    if (!data) return null;
+    return mapScan(data);
+  }
+}
+
+function mapScan(data: {
+  scan_date: string;
+  market_regime: DailyScanSummary['regime'];
+  stocks_scanned: number;
+  no_trade_reason: string | null;
+  scan_results?: Record<string, unknown>[];
+}): DailyScanSummary {
+  return {
+    scanDate: data.scan_date,
+    regime: data.market_regime,
+    stocksScanned: data.stocks_scanned,
+    noTradeReason: data.no_trade_reason,
+    candidates: (data.scan_results ?? []).map(mapResult),
+  };
 }
 
 function mapCandidate(scanId: string, candidate: SwingCandidate) {

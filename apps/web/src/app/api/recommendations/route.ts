@@ -1,9 +1,10 @@
-import { nseSessionDate, parseBody, toIsoDate } from '@bloomstock/shared';
+import { deskSessionCopy, parseBody } from '@bloomstock/shared';
 import { jsonError, jsonOk } from '@/server/http';
 import { requireTrader, requireUser } from '@/server/auth';
 import { getContainer, getOrchestrator } from '@/server/container';
 import { enforceRateLimit } from '@/server/rate-limit';
 import { recommendationSchema } from '@/server/validation';
+import { hydrateDeskTrade } from '@/lib/desk-trade';
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +18,13 @@ export async function POST(request: Request) {
       riskPercent: profile.riskPercent,
       limit: 3,
     });
-    const overview = await scanService.overview();
+    let overview;
+    try {
+      overview = await scanService.overview();
+    } catch {
+      const notes = await prompts.listLatestDeskNotes(user.id);
+      return jsonOk(hydrateDeskTrade(scan, notes));
+    }
     const news = await market.recentNews(undefined, 30);
     const orchestrator = await getOrchestrator();
     const result = await orchestrator.todaysTrade({
@@ -42,7 +49,16 @@ export async function POST(request: Request) {
       count: result.recommendations.length,
       noTrade: result.noTrade,
     });
-    return jsonOk(result, 201);
+    const session = deskSessionCopy();
+    return jsonOk(
+      {
+        ...result,
+        sessionDate: session.sessionDate,
+        marketOpen: session.marketOpen,
+        tapeAsOf: overview.asOf ? new Date(overview.asOf).toISOString() : null,
+      },
+      201,
+    );
   } catch (error) {
     return jsonError(error);
   }
@@ -50,10 +66,17 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    await requireUser();
-    const { scans } = getContainer();
-    const scan = await scans.getByDate(toIsoDate(nseSessionDate()));
-    return jsonOk(scan);
+    const user = await requireUser();
+    const { scanService, prompts } = getContainer();
+    const scan = await scanService.sessionScan();
+    const notes = await prompts.listLatestDeskNotes(user.id);
+    let tapeAsOf: string | null = null;
+    try {
+      tapeAsOf = new Date((await scanService.overview()).asOf).toISOString();
+    } catch {
+      tapeAsOf = null;
+    }
+    return jsonOk(hydrateDeskTrade(scan, notes, tapeAsOf));
   } catch (error) {
     return jsonError(error);
   }

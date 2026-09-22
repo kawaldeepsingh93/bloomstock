@@ -12,6 +12,7 @@ interface OverviewPayload {
   bankNifty?: { lastPrice: number; changePercent: number } | null;
   vix?: { lastPrice: number; changePercent: number } | null;
   fiiDii?: { fiiNet: number; diiNet: number } | null;
+  asOf?: string | Date | null;
   gainers?: { symbol: string; changePercent: number }[];
   losers?: { symbol: string; changePercent: number }[];
   sectors?: { sector: string; changePercent: number }[];
@@ -36,16 +37,19 @@ export default function MarketPage() {
           label="Nifty 50"
           price={data?.nifty?.lastPrice ?? null}
           change={data?.nifty?.changePercent ?? null}
+          asOf={data?.asOf}
         />
         <IndexCard
           label="Bank Nifty"
           price={data?.bankNifty?.lastPrice ?? null}
           change={data?.bankNifty?.changePercent ?? null}
+          asOf={data?.asOf}
         />
         <IndexCard
           label="India VIX"
           price={data?.vix?.lastPrice ?? null}
           change={data?.vix?.changePercent ?? null}
+          asOf={data?.asOf}
         />
       </section>
       <Heatmap

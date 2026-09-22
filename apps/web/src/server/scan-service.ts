@@ -34,7 +34,8 @@ export class ScanService {
   }
 
   async sessionScan(): Promise<DailyScanSummary | null> {
-    return this.scans.getByDate(toIsoDate(nseSessionDate()));
+    const session = toIsoDate(nseSessionDate());
+    return (await this.scans.getByDate(session)) ?? this.scans.getLatest();
   }
 
   async runScan(input: {
@@ -43,12 +44,18 @@ export class ScanService {
     filters?: ScanFilters;
     limit?: number;
   }): Promise<DailyScanSummary> {
-    const persistOfficial = !input.filters;
-    if (persistOfficial) {
-      const existing = await this.sessionScan();
+    if (!input.filters) {
+      const existing = await this.scans.getByDate(toIsoDate(nseSessionDate()));
       if (existing) return this.withEntryDiscipline(existing, input.capital, input.riskPercent);
     }
-    const overview = await this.overview();
+    let overview: MarketOverview;
+    try {
+      overview = await this.overview();
+    } catch (error) {
+      const fallback = await this.scans.getLatest();
+      if (fallback) return this.withEntryDiscipline(fallback, input.capital, input.riskPercent);
+      throw error;
+    }
     const universe = await this.market.listActiveUniverse(2000);
     const snapshots = await this.market.latestIndicators(universe.map((item) => item.symbol));
     const snapshotMap = new Map(snapshots.map((item) => [item.symbol, item]));
@@ -81,7 +88,7 @@ export class ScanService {
       candidates,
       noTradeReason: noTradeReason(overview.regime, candidates),
     };
-    if (persistOfficial) await this.scans.saveDailyScan(summary);
+    await this.scans.saveDailyScan(summary);
     return summary;
   }
 

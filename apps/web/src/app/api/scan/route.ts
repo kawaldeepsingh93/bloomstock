@@ -1,9 +1,19 @@
 import { parseBody } from '@bloomstock/shared';
 import { jsonError, jsonOk } from '@/server/http';
-import { requireTrader } from '@/server/auth';
+import { requireTrader, requireUser } from '@/server/auth';
 import { getContainer } from '@/server/container';
 import { enforceRateLimit } from '@/server/rate-limit';
 import { scanRequestSchema } from '@/server/validation';
+
+export async function GET() {
+  try {
+    await requireUser();
+    const { scanService } = getContainer();
+    return jsonOk(await scanService.sessionScan());
+  } catch (error) {
+    return jsonError(error);
+  }
+}
 
 export async function POST(request: Request) {
   try {

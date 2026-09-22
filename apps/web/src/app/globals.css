@@ -38,6 +38,26 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+@keyframes bloom-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.bloom-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: bloom-marquee 80s linear infinite;
+  will-change: transform;
+}
+
+.bloom-marquee-track:hover {
+  animation-play-state: paused;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

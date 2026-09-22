@@ -209,7 +209,7 @@ describe('ScanService.runScan', () => {
       filters: { rsiMin: 50 },
     });
     expect(getCandles).toHaveBeenCalled();
-    expect(scans.saveDailyScan).not.toHaveBeenCalled();
+    expect(scans.saveDailyScan).toHaveBeenCalled();
   });
 
   it('skips candle fetches for names that fail snapshot filters', async () => {

@@ -1,4 +1,4 @@
-import type { PromptSlug, PromptTemplate } from '@bloomstock/core';
+import type { AgentBundle, AiRecommendation, PromptSlug, PromptTemplate, SwingCandidate } from '@bloomstock/core';
 import { NotFoundError } from '@bloomstock/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -48,6 +48,60 @@ export class PromptRepository {
     if (error) throw error;
     return data.id as string;
   }
+
+  async listLatestDeskNotes(userId: string, limit = 5): Promise<AiRecommendation[]> {
+    const { data, error } = await this.db
+      .from('ai_recommendations')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('prompt_slug', 'todays_trade')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []).map(mapDeskNote);
+  }
+}
+
+function mapDeskNote(row: Record<string, unknown>): AiRecommendation {
+  const agents = (row.agent_outputs ?? {
+    market: { regime: 'neutral', rationale: '', confidence: 0 },
+    technical: null,
+    news: null,
+    risk: null,
+    portfolio: null,
+  }) as AgentBundle;
+  const symbol = agents.technical?.symbol ?? agents.news?.symbol ?? null;
+  const candidate: SwingCandidate | null = symbol
+    ? {
+        symbol,
+        exchange: 'NSE',
+        name: symbol,
+        setupType: null,
+        score: {
+          trend: 0,
+          momentum: 0,
+          volume: 0,
+          structure: 0,
+          total: 0,
+          reasons: [],
+          rejects: [],
+        },
+        risk: null,
+        confidence: Number(row.confidence),
+        verdict: 'watch',
+        rejectedReason: null,
+      }
+    : null;
+  return {
+    id: String(row.id),
+    promptSlug: row.prompt_slug as PromptSlug,
+    promptVersion: Number(row.prompt_version),
+    candidate,
+    agents,
+    reasoning: String(row.reasoning ?? ''),
+    confidence: Number(row.confidence),
+    createdAt: new Date(String(row.created_at)),
+  };
 }
 
 export function renderPrompt(template: string, vars: Record<string, string>): string {

@@ -4,5 +4,6 @@ export * from './kite-auth';
 export * from './alpha-vantage-provider';
 export * from './nse-fii-provider';
 export * from './nse-news-provider';
+export * from './nse-ipo';
 export * from './ingestion-service';
 export * from './cache';

@@ -1,13 +1,15 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input } from '@bloomstock/ui';
 import { ScannerTable } from '@/components/scanner/scanner-table';
+import { DeskStatus } from '@/components/shell/desk-status';
 import { useState } from 'react';
 import { apiGet, apiPost } from '@/lib/api';
 import type { DailyScanSummary, SetupType } from '@bloomstock/core';
 
 export default function ScannerPage() {
+  const client = useQueryClient();
   const [rsiMin, setRsiMin] = useState('55');
   const [rsiMax, setRsiMax] = useState('70');
   const [volume, setVolume] = useState('1.5');
@@ -29,8 +31,15 @@ export default function ScannerPage() {
     };
   }
 
+  const last = useQuery({
+    queryKey: ['session-scan'],
+    queryFn: () => apiGet<DailyScanSummary | null>('/api/scan'),
+  });
   const scan = useMutation({
     mutationFn: () => apiPost<DailyScanSummary>('/api/scan', { limit: 25, filters: filters() }),
+    onSuccess: (data) => {
+      client.setQueryData(['session-scan'], data);
+    },
   });
   const saved = useQuery({
     queryKey: ['saved-scans'],
@@ -40,9 +49,16 @@ export default function ScannerPage() {
     mutationFn: () => apiPost('/api/scans/saved', { name, filters: filters() }),
     onSuccess: () => saved.refetch(),
   });
+  const summary = scan.data ?? last.data;
 
   return (
     <div className="space-y-5">
+      <DeskStatus
+        scanDate={summary?.scanDate}
+        stocksScanned={summary?.stocksScanned}
+        regime={summary?.regime}
+        message={summary?.noTradeReason}
+      />
       <div className="grid gap-3 md:grid-cols-4">
         <Input value={rsiMin} onChange={(e) => setRsiMin(e.target.value)} placeholder="RSI min" />
         <Input value={rsiMax} onChange={(e) => setRsiMax(e.target.value)} placeholder="RSI max" />
@@ -87,7 +103,8 @@ export default function ScannerPage() {
       </div>
       {scan.error ? <p className="text-sm text-rose-300">{(scan.error as Error).message}</p> : null}
       {save.error ? <p className="text-sm text-rose-300">{(save.error as Error).message}</p> : null}
-      <ScannerTable rows={scan.data?.candidates ?? []} />
+      {last.error ? <p className="text-sm text-rose-300">{(last.error as Error).message}</p> : null}
+      <ScannerTable rows={summary?.candidates ?? []} />
       <p className="text-xs text-zinc-500">
         Saved scans: {saved.data?.map((item) => item.name).join(', ') || 'none yet'}
       </p>

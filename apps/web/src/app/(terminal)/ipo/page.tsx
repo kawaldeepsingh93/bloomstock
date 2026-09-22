@@ -1,8 +1,9 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, CardBody, CardHeader, CardTitle } from '@bloomstock/ui';
 import { apiGet, apiPost } from '@/lib/api';
+import { formatIstDate, formatPrice } from '@bloomstock/shared';
 import type { IpoAnalysis, IpoBookReview, IpoIssue } from '@bloomstock/core';
 
 const verdictClass: Record<IpoAnalysis['verdict'], string> = {
@@ -12,9 +13,16 @@ const verdictClass: Record<IpoAnalysis['verdict'], string> = {
 };
 
 export default function IpoPage() {
+  const client = useQueryClient();
   const ipos = useQuery({
     queryKey: ['ipo'],
-    queryFn: () => apiGet<IpoIssue[]>('/api/ipo').catch(() => []),
+    queryFn: () => apiGet<IpoIssue[]>('/api/ipo'),
+  });
+  const sync = useMutation({
+    mutationFn: () => apiPost<{ count: number; issues: IpoIssue[] }>('/api/ipo/sync', {}),
+    onSuccess: (data) => {
+      client.setQueryData(['ipo'], data.issues);
+    },
   });
   const reviewBook = useMutation({
     mutationFn: () => apiPost<IpoBookReview>('/api/ipo/analyze', {}),
@@ -31,19 +39,25 @@ export default function IpoPage() {
           <div>
             <p className="font-serif text-3xl">IPO book</p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-              One desk pass over every ingested issue. The model only narrates NSE calendar facts.
+              Current and forthcoming NSE issues only. Dates and bands come from the exchange
+              calendar — missing fields stay blank.
             </p>
             {reviewBook.data ? (
               <p className="mt-3 text-sm text-zinc-300">{reviewBook.data.headline}</p>
             ) : null}
           </div>
-          <Button
-            variant="gold"
-            onClick={() => reviewBook.mutate()}
-            disabled={reviewBook.isPending || rows.length === 0}
-          >
-            {reviewBook.isPending ? 'Reviewing the book…' : 'Review all IPOs'}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => sync.mutate()} disabled={sync.isPending}>
+              {sync.isPending ? 'Syncing NSE…' : 'Sync NSE IPOs'}
+            </Button>
+            <Button
+              variant="gold"
+              onClick={() => reviewBook.mutate()}
+              disabled={reviewBook.isPending || rows.length === 0}
+            >
+              {reviewBook.isPending ? 'Reviewing the book…' : 'Review all IPOs'}
+            </Button>
+          </div>
         </CardBody>
       </Card>
       {reviewBook.data ? (
@@ -53,6 +67,11 @@ export default function IpoPage() {
           <Count label="Avoid" value={reviewBook.data.avoid} className="text-rose-300" />
         </div>
       ) : null}
+      {sync.data ? (
+        <p className="text-sm text-zinc-400">Ingested {sync.data.count} NSE issues.</p>
+      ) : null}
+      {sync.error ? <p className="text-sm text-rose-300">{(sync.error as Error).message}</p> : null}
+      {ipos.error ? <p className="text-sm text-rose-300">{(ipos.error as Error).message}</p> : null}
       {reviewBook.error ? (
         <p className="text-sm text-rose-300">{(reviewBook.error as Error).message}</p>
       ) : null}
@@ -60,12 +79,16 @@ export default function IpoPage() {
         {rows.length === 0 ? (
           <Card>
             <CardBody className="text-sm text-zinc-400">
-              IPO calendar fills from ingested NSE documents. Nothing is mocked.
+              No current or forthcoming NSE issues in the book. Sync from NSE — nothing is mocked.
             </CardBody>
           </Card>
         ) : (
           rows.map((ipo) => {
             const analysis = notes.get(ipo.id);
+            const band =
+              ipo.priceBandLow != null && ipo.priceBandHigh != null
+                ? `${formatPrice(ipo.priceBandLow)}–${formatPrice(ipo.priceBandHigh)}`
+                : 'Band not published';
             return (
               <Card key={ipo.id}>
                 <CardHeader>
@@ -73,7 +96,12 @@ export default function IpoPage() {
                 </CardHeader>
                 <CardBody className="space-y-3">
                   <p className="text-sm text-zinc-400">
-                    {ipo.status} · {ipo.symbol ?? '—'} · opens {String(ipo.openDate).slice(0, 10)}
+                    {ipo.status} · {ipo.symbol ?? '—'} · {band}
+                    {ipo.lotSize ? ` · lot ${ipo.lotSize}` : ''}
+                  </p>
+                  <p className="text-sm text-zinc-500">
+                    Opens {formatIstDate(new Date(ipo.openDate))} · closes{' '}
+                    {formatIstDate(new Date(ipo.closeDate))}
                   </p>
                   {analysis ? (
                     <div className="text-sm">
@@ -88,7 +116,7 @@ export default function IpoPage() {
                       </ul>
                     </div>
                   ) : (
-                    <p className="text-sm text-zinc-500">Waiting for the book review.</p>
+                    <p className="text-sm text-zinc-500">No desk note yet — review the book.</p>
                   )}
                 </CardBody>
               </Card>

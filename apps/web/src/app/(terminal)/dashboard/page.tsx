@@ -7,6 +7,8 @@ import { TapeList } from '@/components/market/tape-list';
 import { Button, Card, CardBody, CardHeader, CardTitle } from '@bloomstock/ui';
 import Link from 'next/link';
 import { apiGet } from '@/lib/api';
+import { DeskStatus } from '@/components/shell/desk-status';
+import type { DailyScanSummary } from '@bloomstock/core';
 
 interface OverviewPayload {
   nifty?: { lastPrice: number; changePercent: number } | null;
@@ -15,6 +17,7 @@ interface OverviewPayload {
   fiiDii?: { fiiNet: number; diiNet: number } | null;
   regime?: string | null;
   message?: string;
+  asOf?: string | Date | null;
   gainers?: { symbol: string; changePercent: number }[];
   losers?: { symbol: string; changePercent: number }[];
   sectors?: { sector: string; changePercent: number }[];
@@ -32,24 +35,44 @@ export default function DashboardPage() {
     },
   });
   const data = overview.data;
+  const lastScan = useQuery({
+    queryKey: ['session-scan'],
+    queryFn: async (): Promise<DailyScanSummary | null> => {
+      try {
+        return await apiGet<DailyScanSummary | null>('/api/scan');
+      } catch {
+        return null;
+      }
+    },
+  });
 
   return (
     <div className="space-y-6">
+      <DeskStatus
+        scanDate={lastScan.data?.scanDate}
+        stocksScanned={lastScan.data?.stocksScanned}
+        regime={lastScan.data?.regime ?? data?.regime}
+        tapeAsOf={data?.asOf ? String(data.asOf) : null}
+        message={lastScan.data?.noTradeReason ?? data?.message}
+      />
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <IndexCard
           label="Nifty 50"
           price={data?.nifty?.lastPrice ?? null}
           change={data?.nifty?.changePercent ?? null}
+          asOf={data?.asOf}
         />
         <IndexCard
           label="Bank Nifty"
           price={data?.bankNifty?.lastPrice ?? null}
           change={data?.bankNifty?.changePercent ?? null}
+          asOf={data?.asOf}
         />
         <IndexCard
           label="India VIX"
           price={data?.vix?.lastPrice ?? null}
           change={data?.vix?.changePercent ?? null}
+          asOf={data?.asOf}
         />
         <Card>
           <CardHeader>
@@ -60,7 +83,11 @@ export default function DashboardPage() {
               {data?.fiiDii ? `${data.fiiDii.fiiNet.toFixed(0)} cr` : '—'}
             </p>
             <p className="mt-2 text-sm text-zinc-400">
-              {data?.regime ? `Regime ${data.regime}` : 'Awaiting cash-market flow print'}
+              {data?.regime
+                ? `Regime ${data.regime}`
+                : data?.fiiDii
+                  ? 'Flows from last NSE FII/DII print'
+                  : 'No FII/DII print stored yet'}
             </p>
           </CardBody>
         </Card>
@@ -86,8 +113,8 @@ export default function DashboardPage() {
           <div>
             <p className="font-serif text-3xl text-white">Today’s Best Trade</p>
             <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-400">
-              Opens the desk note from the stored morning scan. It does not ingest candles —
-              that is the worker at 09:10 IST.
+              Opens the last stored desk note. After the close it scores that session — it does
+              not wait for the next open.
               {data?.message ? ` ${data.message}` : ''}
             </p>
           </div>

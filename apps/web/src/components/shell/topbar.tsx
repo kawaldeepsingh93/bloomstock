@@ -7,6 +7,7 @@ import { NAV_LINKS } from '@/components/shell/sidebar';
 import { isNavActive, normalizePath } from '@/components/shell/nav-active';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { cn } from '@bloomstock/ui';
+import { deskSessionCopy } from '@bloomstock/shared';
 
 const titles: Record<string, string> = {
   '/dashboard': 'Desk overview',
@@ -26,14 +27,15 @@ export function Topbar() {
   const pathname = usePathname();
   const currentPath = normalizePath(pathname ?? '');
   const title = titles[currentPath] ?? 'BloomStock';
+  const session = deskSessionCopy();
   return (
-    <header className="sticky top-0 z-20 flex flex-col gap-4 border-b border-white/8 bg-[#07080b]/80 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+    <header className="sticky top-9 z-20 flex flex-col gap-4 border-b border-white/8 bg-[#07080b]/80 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
         <div className="min-w-48">
           <p className="font-serif text-2xl lg:hidden">
             Bloom<span className="text-[#d4a017]">Stock</span>
           </p>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Live session</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">{session.label}</p>
           <h1 className="font-serif text-2xl text-white">{title}</h1>
         </div>
         <div className="flex-1">
