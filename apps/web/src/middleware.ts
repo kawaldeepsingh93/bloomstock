@@ -1,6 +1,18 @@
 import { createServerClient } from '@supabase/ssr';
 import { envValue } from '@bloomstock/core';
 import { NextResponse, type NextRequest } from 'next/server';
+import { absolutePath, requestOrigin } from '@/lib/auth-redirect';
+
+function redirectSameOrigin(request: NextRequest, pathWithSearch: string, cookiesFrom?: NextResponse) {
+  const location = absolutePath(requestOrigin(request, request.nextUrl.origin), pathWithSearch);
+  const redirect = new NextResponse(null, { status: 307, headers: { Location: location } });
+  if (cookiesFrom) {
+    for (const cookie of cookiesFrom.cookies.getAll()) {
+      redirect.cookies.set(cookie);
+    }
+  }
+  return redirect;
+}
 
 const PUBLIC_PATHS = ['/login', '/auth/callback', '/api/kite/callback'];
 
@@ -27,18 +39,6 @@ export async function middleware(request: NextRequest) {
       },
     },
   });
-  const code = request.nextUrl.searchParams.get('code');
-  if (code) {
-    await supabase.auth.exchangeCodeForSession(code);
-    const cleaned = request.nextUrl.clone();
-    cleaned.searchParams.delete('code');
-    cleaned.pathname = '/dashboard';
-    const redirect = NextResponse.redirect(cleaned);
-    for (const cookie of response.cookies.getAll()) {
-      redirect.cookies.set(cookie);
-    }
-    return redirect;
-  }
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -46,12 +46,10 @@ export async function middleware(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.some((item) => path === item || path.startsWith(`${item}/`));
   const isApi = path.startsWith('/api');
   if (user && path === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return redirectSameOrigin(request, '/dashboard', response);
   }
   if (!user && !isPublic && !isApi) {
-    const login = new URL('/login', request.url);
-    login.search = request.nextUrl.search;
-    return NextResponse.redirect(login);
+    return redirectSameOrigin(request, `/login${request.nextUrl.search}`, response);
   }
   return response;
 }

@@ -3,18 +3,37 @@
 import { Button, Input, Card, CardBody } from '@bloomstock/ui';
 import { useEffect, useState } from 'react';
 import { apiPost } from '@/lib/api';
-import { messageFromAuthRedirect } from '@/lib/auth-redirect';
+import { hasAuthRedirectPayload, messageFromAuthRedirect } from '@/lib/auth-redirect';
+import { completeAuthFromLocation } from '@/lib/complete-auth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [pending, setPending] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
-    const fromRedirect = messageFromAuthRedirect(window.location.search, window.location.hash);
-    if (!fromRedirect) return;
-    setMessage(fromRedirect);
-    window.history.replaceState(null, '', '/login');
+    const search = window.location.search;
+    const hash = window.location.hash;
+    if (!hasAuthRedirectPayload(search, hash)) return;
+    const fromRedirect = messageFromAuthRedirect(search, hash);
+    if (fromRedirect) {
+      setMessage(fromRedirect);
+      window.history.replaceState(null, '', '/login');
+      return;
+    }
+    setCompleting(true);
+    setMessage('Signing you in…');
+    void (async () => {
+      const result = await completeAuthFromLocation(search, hash);
+      if (result.ok) {
+        window.location.replace(result.next);
+        return;
+      }
+      setCompleting(false);
+      setMessage(result.message);
+      window.history.replaceState(null, '', '/login');
+    })();
   }, []);
 
   async function sendLink() {
@@ -49,8 +68,8 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="work email"
           />
-          <Button variant="gold" onClick={sendLink} disabled={pending} className="w-full">
-            {pending ? 'Sending…' : 'Send link'}
+          <Button variant="gold" onClick={sendLink} disabled={pending || completing} className="w-full">
+            {completing ? 'Signing you in…' : pending ? 'Sending…' : 'Send link'}
           </Button>
           {message ? <p className="text-sm text-zinc-400">{message}</p> : null}
         </CardBody>
