@@ -1,0 +1,27 @@
+{
+  "name": "@bloomstock/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "start": "node --env-file=../../.env dist/index.js",
+    "job:morning": "tsx --env-file=../../.env src/index.ts morning",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "jest --config ../../jest.config.base.cjs --rootDir ."
+  },
+  "dependencies": {
+    "@bloomstock/ai": "workspace:*",
+    "@bloomstock/core": "workspace:*",
+    "@bloomstock/database": "workspace:*",
+    "@bloomstock/market-data": "workspace:*",
+    "@bloomstock/notifications": "workspace:*",
+    "@bloomstock/shared": "workspace:*",
+    "@bloomstock/trading": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3"
+  }
+}

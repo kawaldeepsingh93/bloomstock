@@ -1,0 +1,5 @@
+{
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm turbo build --filter=@bloomstock/web",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':!docs' ':!README.md'"
+}
