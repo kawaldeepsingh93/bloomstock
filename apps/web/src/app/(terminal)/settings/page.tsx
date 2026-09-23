@@ -5,6 +5,7 @@ import { Button, Input, Card, CardBody, CardHeader, CardTitle } from '@bloomstoc
 import { useEffect, useState } from 'react';
 import { apiGet } from '@/lib/api';
 import type { Profile } from '@bloomstock/core';
+import { MorningJobButton } from '@/components/shell/morning-job-button';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -64,6 +65,19 @@ function SettingsForm() {
           {kiteFlag === 'failed' ? (
             <p className="text-sm text-rose-300">Kite login did not complete. Try again.</p>
           ) : null}
+        </CardBody>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Morning ingest</CardTitle>
+        </CardHeader>
+        <CardBody className="space-y-3">
+          <p className="text-sm text-zinc-400">
+            Runs the weekday worker in the background: Kite candles, FII/DII, IPO calendar, scan,
+            and the desk note. The page stays usable. Status flips to success or failure when the
+            job finishes.
+          </p>
+          <MorningJobButton />
         </CardBody>
       </Card>
       <Card>

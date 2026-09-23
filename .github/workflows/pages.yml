@@ -1,0 +1,46 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_run:
+    workflows: ['Morning ingest']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write latest ingest status
+        if: github.event_name == 'workflow_run'
+        run: |
+          cat > site/status.json <<EOF
+          {
+            "state": "${{ github.event.workflow_run.conclusion }}",
+            "message": "Morning ingest ${{ github.event.workflow_run.conclusion }} on GitHub Actions.",
+            "finishedAt": "${{ github.event.workflow_run.updated_at }}",
+            "runUrl": "${{ github.event.workflow_run.html_url }}"
+          }
+          EOF
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

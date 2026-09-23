@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BloomStock — NSE desk status</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #07080b;
+        --panel: #10131a;
+        --gold: #d4a017;
+        --text: #f4f5f7;
+        --muted: #a1a1aa;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Georgia, 'Times New Roman', serif;
+        background:
+          radial-gradient(1200px 600px at 10% -10%, rgba(212, 160, 23, 0.08), transparent 55%),
+          var(--bg);
+        color: var(--text);
+      }
+      main {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 4rem 1.5rem;
+      }
+      h1 {
+        font-size: 3rem;
+        margin: 0 0 0.5rem;
+      }
+      h1 span {
+        color: var(--gold);
+      }
+      p {
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .card {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 1rem;
+        background: var(--panel);
+      }
+      .state {
+        font-size: 0.75rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--gold);
+      }
+      a {
+        color: var(--gold);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Bloom<span>Stock</span></h1>
+      <p>Public ingest board. The research terminal stays on the Next.js host — GitHub Pages cannot run Kite, Supabase Auth, or the scan APIs.</p>
+      <section class="card">
+        <p class="state" id="state">Loading status…</p>
+        <p id="message">Checking the last morning job.</p>
+        <p id="when"></p>
+        <p><a id="run" href="https://github.com/kawaldeepsingh93/bloomstock/actions/workflows/morning.yml">Morning Action</a></p>
+      </section>
+    </main>
+    <script>
+      fetch('./status.json', { cache: 'no-store' })
+        .then((response) => response.json())
+        .then((status) => {
+          document.getElementById('state').textContent = status.state || 'idle';
+          document.getElementById('message').textContent =
+            status.message || 'No morning ingest has been published yet.';
+          document.getElementById('when').textContent = status.finishedAt
+            ? `Finished ${status.finishedAt}`
+            : '';
+          if (status.runUrl) document.getElementById('run').href = status.runUrl;
+        })
+        .catch(() => {
+          document.getElementById('state').textContent = 'unavailable';
+          document.getElementById('message').textContent = 'Could not read the published ingest status.';
+        });
+    </script>
+  </body>
+</html>

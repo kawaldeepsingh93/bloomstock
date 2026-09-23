@@ -8,6 +8,7 @@ import { Button, Card, CardBody, CardHeader, CardTitle } from '@bloomstock/ui';
 import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { DeskStatus } from '@/components/shell/desk-status';
+import { MorningJobButton } from '@/components/shell/morning-job-button';
 import type { DailyScanSummary } from '@bloomstock/core';
 
 interface OverviewPayload {
@@ -48,13 +49,16 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <DeskStatus
-        scanDate={lastScan.data?.scanDate}
-        stocksScanned={lastScan.data?.stocksScanned}
-        regime={lastScan.data?.regime ?? data?.regime}
-        tapeAsOf={data?.asOf ? String(data.asOf) : null}
-        message={lastScan.data?.noTradeReason ?? data?.message}
-      />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <DeskStatus
+          scanDate={lastScan.data?.scanDate}
+          stocksScanned={lastScan.data?.stocksScanned}
+          regime={lastScan.data?.regime ?? data?.regime}
+          tapeAsOf={data?.asOf ? String(data.asOf) : null}
+          message={lastScan.data?.noTradeReason ?? data?.message}
+        />
+        <MorningJobButton />
+      </div>
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <IndexCard
           label="Nifty 50"

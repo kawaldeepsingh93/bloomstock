@@ -5,6 +5,10 @@ on:
     - cron: '40 3 * * 1-5'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   ingest:
     runs-on: ubuntu-latest
